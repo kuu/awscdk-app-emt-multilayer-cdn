@@ -3,6 +3,13 @@ import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from '
 import { Construct } from 'constructs';
 import { MediaTailorWithCloudFront, CloudFront } from 'awscdk-mediatailor-cloudfront-construct';
 
+function getFileName(url: string): string {
+  if (url.endsWith('.m3u8') || url.endsWith('.mpd')) {
+    return url.split('/').pop() || url;
+  }
+  return '';
+}
+
 export class EmtMultiCdNsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -45,6 +52,7 @@ export class EmtMultiCdNsStack extends cdk.Stack {
     const outerCf = new CloudFront(this, 'CloudFront', {
       videoContentSourceUrl: `https://${innerCfDomainName}/out/${contentPath}`,
       mediaTailorEndpointUrl: `https://${innerCfDomainName}/v1/${mediaTailorHlsPath}`,
+      adSegmentSourceUrl: `https://${innerCfDomainName}/tm`,
     });
 
     const outerCfDomainName = outerCf.distribution.distributionDomainName;
@@ -73,13 +81,13 @@ export class EmtMultiCdNsStack extends cdk.Stack {
       }),
     });
 
-    const hlsPlaybackPrefix =`https://${outerCfDomainName}/v1/${mediaTailorHlsPath}`;
+    const hlsPlaybackUrl =`https://${outerCfDomainName}/v1/${mediaTailorHlsPath}${getFileName(videoContentSourceUrl)}`;
 
-    // Output MediaTile HLS playback prefix via CloudFront
+    // Output MediaTile HLS playback URL via CloudFront
     new cdk.CfnOutput(this, "HLSPlaybackPrefix", {
-      value: hlsPlaybackPrefix,
-      exportName: cdk.Aws.STACK_NAME + "HLSPlaybackPrefix",
-      description: "The HLS playback prefix for MediaTailor Configuration",
+      value: hlsPlaybackUrl,
+      exportName: cdk.Aws.STACK_NAME + "HLSPlaybackUrl",
+      description: "The HLS playback UR via CloudFront",
     });
 
     // Output MediaTailor Session Initialization Prefix
